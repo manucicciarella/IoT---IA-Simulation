@@ -1,0 +1,439 @@
+[
+    {
+        "id": "0329be821138bde4",
+        "type": "tab",
+        "label": "DJI Agras - Monitoreo y Control",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "f175892b1c5f6ba7",
+        "type": "mqtt-broker",
+        "name": "HiveMQ",
+        "broker": "broker.hivemq.com",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "56326cbc0392ae58",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    },
+    {
+        "id": "ui_tab_agras",
+        "type": "ui_tab",
+        "name": "Monitoreo Agras T70",
+        "icon": "dashboard"
+    },
+    {
+        "id": "ui_group_sensors",
+        "type": "ui_group",
+        "name": "Telemetría del Dron",
+        "tab": "ui_tab_agras",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "86cbaadd7bc9a340",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "192bf6926a1c8240",
+        "type": "mqtt in",
+        "z": "0329be821138bde4",
+        "name": "Recibir datos Dron",
+        "topic": "cursoiot/Agus/sensor",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "f175892b1c5f6ba7",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "cdd76c57fc9288f7",
+                "28747fac2d156bae",
+                "0333b86f03308a60"
+            ]
+        ]
+    },
+    {
+        "id": "cdd76c57fc9288f7",
+        "type": "function",
+        "z": "0329be821138bde4",
+        "name": "Lógica de Control (Wokwi)",
+        "func": "let d = msg.payload;\nlet comando = \"SISTEMA OK\";\n\n// Si hay condiciones críticas, mandamos señal de alerta\nif (d.hum < 30 || d.temp > 32) {\n    comando = \"ALERTA\";\n}\n\nmsg.topic = \"cursoiot/Agus/comando\";\nmsg.payload = comando;\nreturn msg;\n\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 300,
+        "wires": [
+            [
+                "9fb72521d62fb3fc",
+                "21077e1d488a4997"
+            ]
+        ]
+    },
+    {
+        "id": "9fb72521d62fb3fc",
+        "type": "mqtt out",
+        "z": "0329be821138bde4",
+        "name": "Enviar al Dron",
+        "topic": "cursoiot/Agus/comando",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "f175892b1c5f6ba7",
+        "x": 660,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "28747fac2d156bae",
+        "type": "debug",
+        "z": "0329be821138bde4",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 360,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "21077e1d488a4997",
+        "type": "debug",
+        "z": "0329be821138bde4",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "0333b86f03308a60",
+        "type": "function",
+        "z": "0329be821138bde4",
+        "name": "Procesar UI",
+        "func": "let d = msg.payload;\n\nlet alerta = \"NORMAL\";\n\nif (d.soil < 30 && d.temp > 30 && d.lux > 70) {\n    alerta = \"ALERTA CRÍTICA: riesgo de estrés hídrico\";\n} else if (d.soil < 30) {\n    alerta = \"ALERTA: humedad del suelo baja\";\n} else if (d.temp > 32) {\n    alerta = \"ALERTA: temperatura elevada\";\n} else if (d.lux > 85) {\n    alerta = \"Aviso: radiación solar muy alta\";\n} else if (d.hum < 30) {\n    alerta = \"ALERTA: humedad ambiente baja\";\n}\n\nreturn [\n    { payload: d.temp },\n    { payload: d.hum },\n    { payload: d.soil },\n    { payload: d.lux },\n    { payload: alerta },\n    { payload: d.parcela }\n];",
+        "outputs": 6,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 120,
+        "wires": [
+            [
+                "654d1ec936aceaaf"
+            ],
+            [
+                "9cd5137b4d1a4851"
+            ],
+            [
+                "nuevo_gauge_suelo"
+            ],
+            [
+                "fd64778da5f2bf11"
+            ],
+            [
+                "b01008de3623d9d3"
+            ],
+            [
+                "51a619e6efa27eb5"
+            ]
+        ]
+    },
+    {
+        "id": "b01008de3623d9d3",
+        "type": "ui_text",
+        "z": "0329be821138bde4",
+        "group": "ui_group_sensors",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "name": "Estado del Cultivo",
+        "label": "Estado: ",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 630,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "51a619e6efa27eb5",
+        "type": "ui_text",
+        "z": "0329be821138bde4",
+        "group": "ui_group_sensors",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "name": "Ubicación Actual",
+        "label": "Ubicación: ",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 630,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "654d1ec936aceaaf",
+        "type": "ui_gauge",
+        "z": "0329be821138bde4",
+        "name": "Temperatura",
+        "group": "ui_group_sensors",
+        "order": 1,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Temperatura",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "50",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 610,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "9cd5137b4d1a4851",
+        "type": "ui_gauge",
+        "z": "0329be821138bde4",
+        "name": "Humedad",
+        "group": "ui_group_sensors",
+        "order": 2,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Humedad",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 600,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "fd64778da5f2bf11",
+        "type": "ui_gauge",
+        "z": "0329be821138bde4",
+        "name": "Radiación",
+        "group": "ui_group_sensors",
+        "order": 4,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Radiación",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 600,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "nuevo_gauge_suelo",
+        "type": "ui_gauge",
+        "z": "0329be821138bde4",
+        "name": "Humedad Suelo",
+        "group": "ui_group_sensors",
+        "order": 3,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Humedad Suelo",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "100",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "30",
+        "seg2": "70",
+        "diff": false,
+        "className": "",
+        "x": 620,
+        "y": 120,
+        "wires": []
+    }
+]

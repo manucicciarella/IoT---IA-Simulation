@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "author": "Agus Jur",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-v1", "id": "esp32", "top": -21.92, "left": -81.6, "attrs": {} },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": -70.4,
+      "left": 82.4,
+      "attrs": { "pins": "i2c" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_rojo",
+      "top": 150,
+      "left": 119,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "res1",
+      "top": 186.35,
+      "left": 38.4,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht",
+      "top": -105.3,
+      "left": -178.2,
+      "attrs": { "temperature": "24", "humidity": "55" }
+    },
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr", "top": 224, "left": -162.4, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot_suelo", "top": 94.7, "left": -221, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp32:GND.1", "lcd:GND", "black", [] ],
+    [ "esp32:VIN", "lcd:VCC", "red", [] ],
+    [ "esp32:D21", "lcd:SDA", "green", [] ],
+    [ "esp32:D22", "lcd:SCL", "yellow", [] ],
+    [ "esp32:D2", "led_rojo:A", "red", [] ],
+    [ "led_rojo:C", "res1:2", "black", [] ],
+    [ "res1:1", "esp32:GND.2", "black", [] ],
+    [ "esp32:D4", "dht:SDA", "blue", [] ],
+    [ "esp32:3V3", "dht:VCC", "red", [] ],
+    [ "dht:GND", "esp32:GND.2", "black", [] ],
+    [ "esp32:3V3", "ldr:VCC", "red", [] ],
+    [ "esp32:D34", "ldr:OUT", "orange", [] ],
+    [ "ldr:GND", "esp32:GND.2", "black", [] ],
+    [ "esp32:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp32:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp32:3V3", "pot_suelo:VCC", "red", [] ],
+    [ "esp32:GND.2", "pot_suelo:GND", "black", [] ],
+    [ "esp32:D35", "pot_suelo:SIG", "purple", [] ]
+  ],
+  "dependencies": {}
+}

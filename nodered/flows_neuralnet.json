@@ -1,0 +1,30 @@
+[
+    {
+        "id": "ccab8bc38c90af33",
+        "type": "neuralnet",
+        "z": "8ad8c6bc3e959b3f",
+        "name": "neuralnet",
+        "learningRate": 0.3,
+        "errorThresh": 0.005,
+        "iterations": 20000,
+        "log": false,
+        "logPeriod": 10,
+        "nntype": "0",
+        "x": 760,
+        "y": 540,
+        "wires": [
+            [
+                "be067868d8fa7275",
+                "df3828d9dc97ae7e"
+            ]
+        ]
+    },
+    {
+        "id": "64a53decba80ca11",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-brain-js": "0.0.1"
+        }
+    }
+]

@@ -1,0 +1,21 @@
+# ── Node-RED (keep only the files needed to run Docker) ──────────────────────
+nodered/.config.*
+nodered/flows_cred.json
+nodered/node_modules/
+nodered/package.json
+nodered/package-lock.json
+nodered/lib/
+nodered/projects/
+nodered/settings.js
+nodered/.npmrc
+nodered/.npm
+
+# ── Wokwi / PlatformIO build artifacts ───────────────────────────────────────
+wokwi/.pio/
+
+# ── VS Code ───────────────────────────────────────────────────────────────────
+.vscode/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
