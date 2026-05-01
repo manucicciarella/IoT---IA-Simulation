@@ -203,6 +203,13 @@ void loop() {
     // Lectura luz
     int lux = leerLuzPorcentaje();
 
+    // Simulation variance: randomize across full sensor ranges so the NN
+    // exercises all 5 classification regions each cycle
+    temp = random(100, 500) / 10.0;  // 10.0 – 49.9 °C
+    hum  = random(10, 100);          // 10 – 99 %
+    humedadSuelo = random(5, 95);    // 5 – 95 %
+    lux  = random(10, 95);           // 10 – 95 %
+
     // JSON
     String payload = "{";
     payload += "\"parcela\":\"" + ultimaParcela + "\",";
