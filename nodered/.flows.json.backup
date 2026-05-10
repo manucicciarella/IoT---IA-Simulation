@@ -2,7 +2,14 @@
     {
         "id": "0329be821138bde4",
         "type": "tab",
-        "label": "DJI Agras - Monitoreo y Control",
+        "label": "4 DJI Agras - Monitoreo y Control",
+        "disabled": true,
+        "info": ""
+    },
+    {
+        "id": "5ca8cb27f5ecfc74",
+        "type": "tab",
+        "label": "6 DJI Agras - Monitoreo y Control",
         "disabled": false,
         "info": ""
     },
@@ -155,6 +162,19 @@
         }
     },
     {
+        "id": "f9ff20f37ce805ce",
+        "type": "ui_tab",
+        "name": "Cultivo",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "dbb6d934885561b5",
+        "type": "gemini-api-key",
+        "name": "API"
+    },
+    {
         "id": "192bf6926a1c8240",
         "type": "mqtt in",
         "z": "0329be821138bde4",
@@ -231,7 +251,7 @@
         "type": "function",
         "z": "0329be821138bde4",
         "name": "Procesar UI",
-        "func": "let d = msg.payload;\n\nlet alerta = \"NORMAL\";\n\nif (d.soil < 30 && d.temp > 30 && d.lux > 70) {\n    alerta = \"ALERTA CRÍTICA: riesgo de estrés hídrico\";\n} else if (d.soil < 30) {\n    alerta = \"ALERTA: humedad del suelo baja\";\n} else if (d.temp > 32) {\n    alerta = \"ALERTA: temperatura elevada\";\n} else if (d.lux > 85) {\n    alerta = \"Aviso: radiación solar muy alta\";\n} else if (d.hum < 30) {\n    alerta = \"ALERTA: humedad ambiente baja\";\n}\n\nreturn [\n    { payload: d.temp },\n    { payload: d.hum },\n    { payload: d.soil },\n    { payload: d.lux },\n    { payload: alerta },\n    { payload: d.parcela }\n];",
+        "func": "let d = msg.payload;\n\nlet alerta = \"NORMAL\";\n\nif (d.suelo < 30 && d.temp > 30 && d.rad > 70) {\n    alerta = \"ALERTA CRÍTICA: riesgo de estrés hídrico\";\n} else if (d.suelo < 30) {\n    alerta = \"ALERTA: humedad del suelo baja\";\n} else if (d.temp > 32) {\n    alerta = \"ALERTA: temperatura elevada\";\n} else if (d.rad > 85) {\n    alerta = \"Aviso: radiación solar muy alta\";\n} else if (d.hum < 30) {\n    alerta = \"ALERTA: humedad ambiente baja\";\n}\n\nreturn [\n    { payload: d.temp },\n    { payload: d.hum },\n    { payload: d.suelo },\n    { payload: d.rad },\n    { payload: alerta },\n    { payload: d.parcela }\n];",
         "outputs": 6,
         "timeout": "",
         "noerr": 0,
@@ -486,7 +506,7 @@
         "type": "function",
         "z": "0329be821138bde4",
         "name": "Parsear dataset",
-        "func": "try {\n    msg.payload = JSON.parse(msg.payload.toString());\n    node.status({fill:\"green\",shape:\"dot\",text:msg.payload.length+\" samples OK\"});\n    return msg;\n} catch(e) {\n    node.error(\"Dataset parse failed: \"+e.message, msg);\n    node.status({fill:\"red\",shape:\"ring\",text:\"parse error: \"+e.message});\n    return null;\n}",
+        "func": "try {\n    msg.trainData = JSON.parse(msg.payload.toString());\n    msg.neuralNetworkOptions = {\n        learningRate: 0.3,\n        errorThresh: 0.005,\n        iterations: 3000,\n        hiddenLayers: [10, 6]\n    };\n    node.status({fill:\"green\",shape:\"dot\",text:msg.trainData.length+\" samples OK\"});\n    return msg;\n} catch(e) {\n    node.error(\"Dataset parse failed: \"+e.message, msg);\n    node.status({fill:\"red\",shape:\"ring\",text:\"parse error: \"+e.message});\n    return null;\n}",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -497,8 +517,7 @@
         "y": 480,
         "wires": [
             [
-                "ccab8bc38c90af33",
-                "91960ea531d8197f"
+                "ccab8bc38c90af33"
             ]
         ]
     },
@@ -507,7 +526,7 @@
         "type": "function",
         "z": "0329be821138bde4",
         "name": "Normalizar entrada",
-        "func": "let d = msg.payload;\nmsg.payload = {\n    temp: parseFloat((d.temp / 50).toFixed(4)),\n    hum_amb: parseFloat((d.hum / 100).toFixed(4)),\n    hum_suelo: parseFloat((d.soil / 100).toFixed(4)),\n    radiacion: parseFloat((d.lux / 100).toFixed(4)),\n    viento: 0.2\n};\nreturn msg;",
+        "func": "let d = msg.payload;\nmsg.runData = {\n    temp: parseFloat((d.temp / 50).toFixed(4)),\n    hum_amb: parseFloat((d.hum / 100).toFixed(4)),\n    hum_suelo: parseFloat((d.suelo / 100).toFixed(4)),\n    radiacion: parseFloat((d.rad / 100).toFixed(4)),\n    viento: parseFloat((d.viento / 120).toFixed(4))\n};\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -527,7 +546,7 @@
         "type": "function",
         "z": "0329be821138bde4",
         "name": "Decodificar salida NN",
-        "func": "const ACCIONES = {\"0\":\"Normal\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"Alerta critica\",\"4\":\"Inspeccionar\"};\nconst COMANDOS = {\"0\":\"SISTEMA OK\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"ALERTA\",\"4\":\"Inspeccionar\"};\nlet salida = msg.payload;\nif (!salida || typeof salida[\"0\"] === \"undefined\") return null;\nlet maxKey = Object.keys(salida).reduce((a, b) => salida[a] > salida[b] ? a : b);\nmsg.accion = ACCIONES[maxKey];\nmsg.topic = \"cursoiot/Agus/comando\";\nmsg.payload = COMANDOS[maxKey];\nreturn msg;",
+        "func": "const ACCIONES = {\"0\":\"Normal\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"Alerta critica\",\"4\":\"Inspeccionar\"};\nconst COMANDOS = {\"0\":\"SISTEMA OK\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"ALERTA\",\"4\":\"Inspeccionar\"};\nlet salida = msg.decision;\nif (!salida || typeof salida[\"0\"] === \"undefined\") return null;\nlet maxKey = Object.keys(salida).reduce((a, b) => salida[a] > salida[b] ? a : b);\nmsg.accion = ACCIONES[maxKey];\nmsg.topic = \"cursoiot/Agus/comando\";\nmsg.payload = COMANDOS[maxKey];\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -586,99 +605,1107 @@
         "wires": []
     },
     {
-        "id": "91960ea531d8197f",
-        "type": "neuralnet",
-        "z": "0329be821138bde4",
-        "name": "neuralnet",
-        "learningRate": 0.3,
-        "errorThresh": 0.005,
-        "iterations": "1000",
-        "log": false,
-        "logPeriod": 10,
-        "nntype": "0",
-        "x": 820,
-        "y": 500,
+        "id": "496bede88b84aaad",
+        "type": "mqtt in",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Recibir datos Dron",
+        "topic": "cursoiot/grupo3/sensor",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "f175892b1c5f6ba7",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 90,
+        "y": 120,
         "wires": [
             [
-                "9eb567fd9bc9e08f"
+                "sw_token_val_001"
             ]
         ]
     },
     {
-        "id": "9eb567fd9bc9e08f",
+        "id": "9152d66f69d19552",
         "type": "function",
-        "z": "0329be821138bde4",
-        "name": "Decodificar salida NN",
-        "func": "const ACCIONES = {\"0\":\"Normal\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"Alerta critica\",\"4\":\"Inspeccionar\"};\nconst COMANDOS = {\"0\":\"SISTEMA OK\",\"1\":\"Regar\",\"2\":\"Fumigar\",\"3\":\"ALERTA\",\"4\":\"Inspeccionar\"};\nlet salida = msg.payload;\nif (!salida || typeof salida[\"0\"] === \"undefined\") return null;\nlet maxKey = Object.keys(salida).reduce((a, b) => salida[a] > salida[b] ? a : b);\nmsg.accion = ACCIONES[maxKey];\nmsg.topic = \"cursoiot/Agus/comando\";\nmsg.payload = COMANDOS[maxKey];\nreturn msg;",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Control básico respaldo (Wokwi)",
+        "func": "let d = msg.payload;\nlet radPct = Math.round(d.rad / 4095 * 100);\nlet comando = \"SISTEMA OK\";\n\n// Control básico de respaldo para el ESP32.\n// La decisión avanzada se muestra aparte con NeuralNet + Agente LLM.\nif (d.suelo < 30 || d.temp > 32 || radPct > 85) {\n    comando = \"ALERTA CRÍTICA\";\n}\n\nmsg.topic = \"cursoiot/grupo3/comandos\";\nmsg.payload = comando;\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1080,
-        "y": 500,
+        "x": 1450,
+        "y": 320,
         "wires": [
             [
-                "b72ae20817d54685"
+                "3a7779d78c316557",
+                "b6b653fe158081c6"
             ]
         ]
     },
     {
-        "id": "5d81b9ed3e82e7a3",
-        "type": "debug",
-        "z": "0329be821138bde4",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1400,
-        "y": 600,
+        "id": "3a7779d78c316557",
+        "type": "mqtt out",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Enviar al Dron",
+        "topic": "cursoiot/grupo3/comandos",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "f175892b1c5f6ba7",
+        "x": 2320,
+        "y": 440,
         "wires": []
     },
     {
-        "id": "b72ae20817d54685",
-        "type": "function",
-        "z": "0329be821138bde4",
-        "name": "Accion para UI",
-        "func": "msg.payload = msg.accion;\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1180,
-        "y": 600,
-        "wires": [
-            [
-                "6643691defed69c8"
-            ]
-        ]
+        "id": "0e46d3cd68b514cc",
+        "type": "ui_gauge",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Temperatura",
+        "group": "ui_group_sensors",
+        "order": 1,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Temperatura",
+        "label": "°C",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "50",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 690,
+        "y": 20,
+        "wires": []
     },
     {
-        "id": "6643691defed69c8",
-        "type": "ui_text",
-        "z": "0329be821138bde4",
+        "id": "f739aa5c9d4e65fc",
+        "type": "ui_gauge",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Humedad",
         "group": "ui_group_sensors",
-        "order": 7,
-        "width": "12",
+        "order": 2,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Humedad",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 680,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "0711dfe681fe750c",
+        "type": "ui_gauge",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Radiación",
+        "group": "ui_group_sensors",
+        "order": 4,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Radiación",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 680,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "7671533e9334af41",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 5,
+        "width": 0,
         "height": 0,
-        "name": "Accion NN",
-        "label": "IA recomienda: ",
+        "name": "Estado del Cultivo",
+        "label": "Estado: ",
         "format": "{{msg.payload}}",
         "layout": "row-spread",
         "className": "",
         "style": false,
         "font": "",
-        "fontSize": "18",
-        "color": "#0094CE",
-        "x": 1400,
-        "y": 600,
+        "fontSize": "",
+        "color": "#000000",
+        "x": 710,
+        "y": 180,
         "wires": []
+    },
+    {
+        "id": "3ee04c678cb5374c",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "name": "Ubicación Actual",
+        "label": "Ubicación: ",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 710,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "b6b653fe158081c6",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug Bidireccional Wokwi",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2340,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "014a8ba98845485e",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Procesar UI",
+        "func": "let d = msg.payload;\nlet radPct = Math.round(d.rad / 4095 * 100);\n\nlet alerta = \"NORMAL\";\n\nif (d.suelo < 30 && d.temp > 30 && radPct > 70) {\n    alerta = \"ALERTA CRÍTICA: riesgo de estrés hídrico\";\n} else if (d.suelo < 30) {\n    alerta = \"ALERTA: humedad del suelo baja\";\n} else if (d.temp > 32) {\n    alerta = \"ALERTA: temperatura elevada\";\n} else if (radPct > 85) {\n    alerta = \"Aviso: radiación solar muy alta\";\n} else if (d.hum < 30) {\n    alerta = \"ALERTA: humedad ambiente baja\";\n}\n\nreturn [\n    { payload: d.temp },\n    { payload: d.hum },\n    { payload: d.suelo },\n    { payload: radPct },\n    { payload: alerta },\n    { payload: d.parcela },\n    { payload: d.viento },\n    { payload: d.cultivo }\n];",
+        "outputs": 8,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 120,
+        "wires": [
+            [
+                "0e46d3cd68b514cc"
+            ],
+            [
+                "f739aa5c9d4e65fc"
+            ],
+            [
+                "03e2c9f617ebe0fd"
+            ],
+            [
+                "0711dfe681fe750c"
+            ],
+            [
+                "7671533e9334af41"
+            ],
+            [
+                "3ee04c678cb5374c"
+            ],
+            [
+                "ui_viento_001"
+            ],
+            [
+                "ui_cultivo_001"
+            ]
+        ]
+    },
+    {
+        "id": "03e2c9f617ebe0fd",
+        "type": "ui_gauge",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Humedad Suelo",
+        "group": "ui_group_sensors",
+        "order": 3,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Humedad Suelo",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "100",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "30",
+        "seg2": "70",
+        "diff": false,
+        "className": "",
+        "x": 700,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "aa337b64de8df0d2",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug NeuralNet",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 830,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "aea1ef970d3250b6",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Preparar Entrada IA",
+        "func": "let d = msg.sensores;\n\n// La red neuronal fue entrenada con valores normalizados entre 0 y 1.\nmsg.runData = {\n    temp: Number(d.temp) / 50,\n    hum_amb: Number(d.hum) / 100,\n    hum_suelo: Number(d.suelo) / 100,\n    radiacion: Number(d.rad) / 100,\n    viento: Number(d.viento) / 120\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 580,
+        "wires": [
+            [
+                "f1a323f9774314e8"
+            ]
+        ]
+    },
+    {
+        "id": "48e1f36b9ebe1599",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Interpretar Prediccion IA",
+        "func": "// Si el mensaje viene del entrenamiento, lo ignoramos\nif (msg.trainData || msg.net || msg.result) {\n    return null;\n}\n\n// La predicción suele venir en msg.decision\nlet pred = msg.decision;\n\nif (!pred) {\n    msg.payload = \"IA: sin predicción\";\n    return msg;\n}\n\nlet clases = {\n    \"0\": \"NORMAL\",\n    \"1\": \"REGAR\",\n    \"2\": \"FUMIGAR\",\n    \"3\": \"ALERTA CRÍTICA\",\n    \"4\": \"INSPECCIONAR\"\n};\n\nlet mejorClase = null;\nlet mejorValor = -1;\n\nfor (let clase in pred) {\n    let valor = Number(pred[clase]);\n\n    if (valor > mejorValor) {\n        mejorValor = valor;\n        mejorClase = clase;\n    }\n}\n\nmsg.payload = \"IA: \" + clases[mejorClase] + \" (\" + (mejorValor * 100).toFixed(1) + \"%)\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 480,
+        "wires": [
+            [
+                "f0bb56959c0a03b3",
+                "483b4c6ec9b6cc9f",
+                "0866c3493ef2709a"
+            ]
+        ]
+    },
+    {
+        "id": "f0bb56959c0a03b3",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug Prediccion",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1110,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "e26297ce5a7ef0a1",
+        "type": "inject",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Test Neural Net",
+        "props": [
+            {
+                "p": "runData",
+                "v": "{\"datetime\":\"2026-01-01 00:00:00\",\"temp\":81,\"hum_amb\":3.2,\"hum_suelo\":62.4,\"radiacion\":22.7,\"viento\":48.2,\"bateria\":24.6}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 200,
+        "y": 500,
+        "wires": [
+            [
+                "a965a650d04d3360"
+            ]
+        ]
+    },
+    {
+        "id": "f1a323f9774314e8",
+        "type": "neuralnet",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "neuralnet",
+        "learningRate": 0.3,
+        "errorThresh": 0.005,
+        "iterations": 20000,
+        "log": false,
+        "logPeriod": 10,
+        "nntype": "0",
+        "x": 640,
+        "y": 440,
+        "wires": [
+            [
+                "aa337b64de8df0d2",
+                "48e1f36b9ebe1599"
+            ]
+        ]
+    },
+    {
+        "id": "2c28d6bcae29d0eb",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Agregar contexto por parcela",
+        "func": "let d = msg.payload;\n\nfunction randomEntre(min, max) {\n    return Math.round((Math.random() * (max - min) + min) * 10) / 10;\n}\n\n// Contexto operativo simulado por parcela.\n// El viento se genera dentro de un rango distinto según la zona.\nlet contextoParcelas = {\n    \"Parcela 1\": {\n        viento_min: 5,\n        viento_max: 18,\n        bateria_dron: 82,\n        nivel_tanque: 70,\n        ultimo_riego_horas: 18,\n        ultima_fumigacion_dias: 12,\n        tipo_cultivo: \"soja\",\n        etapa_cultivo: \"floración\"\n    },\n    \"Parcela 2\": {\n        viento_min: 18,\n        viento_max: 32,\n        bateria_dron: 64,\n        nivel_tanque: 55,\n        ultimo_riego_horas: 4,\n        ultima_fumigacion_dias: 2,\n        tipo_cultivo: \"maíz\",\n        etapa_cultivo: \"crecimiento vegetativo\"\n    },\n    \"Parcela 3\": {\n        viento_min: 32,\n        viento_max: 48,\n        bateria_dron: 37,\n        nivel_tanque: 30,\n        ultimo_riego_horas: 2,\n        ultima_fumigacion_dias: 1,\n        tipo_cultivo: \"soja\",\n        etapa_cultivo: \"floración\"\n    },\n    \"Parcela 4\": {\n        viento_min: 3,\n        viento_max: 15,\n        bateria_dron: 91,\n        nivel_tanque: 85,\n        ultimo_riego_horas: 36,\n        ultima_fumigacion_dias: 18,\n        tipo_cultivo: \"trigo\",\n        etapa_cultivo: \"maduración\"\n    }\n};\n\nlet parcela = d.parcela || \"Parcela 1\";\nlet ctxBase = contextoParcelas[parcela] || contextoParcelas[\"Parcela 1\"];\n\nlet viento = Number(d.viento) || randomEntre(ctxBase.viento_min, ctxBase.viento_max);\n\nmsg.sensores = {\n    parcela: parcela,\n    temp: Number(d.temp),\n    hum: Number(d.hum),\n    suelo: Number(d.suelo),\n    rad: Math.round(Number(d.rad) / 4095 * 100),\n    viento: viento\n};\n\nmsg.contexto = {\n    viento: viento,\n    bateria_dron: ctxBase.bateria_dron,\n    nivel_tanque: ctxBase.nivel_tanque,\n    ultimo_riego_horas: ctxBase.ultimo_riego_horas,\n    ultima_fumigacion_dias: ctxBase.ultima_fumigacion_dias,\n    tipo_cultivo: ctxBase.tipo_cultivo,\n    etapa_cultivo: ctxBase.etapa_cultivo\n};\n\n// Si querés que los nodos de UI también puedan leer viento/contexto desde payload:\nmsg.payload = {\n    parcela: parcela,\n    temp: Number(d.temp),\n    hum: Number(d.hum),\n    suelo: Number(d.suelo),\n    rad: Math.round(Number(d.rad) / 4095 * 100),\n    viento: viento,\n    bateria_dron: ctxBase.bateria_dron,\n    nivel_tanque: ctxBase.nivel_tanque,\n    ultimo_riego_horas: ctxBase.ultimo_riego_horas,\n    ultima_fumigacion_dias: ctxBase.ultima_fumigacion_dias,\n    tipo_cultivo: ctxBase.tipo_cultivo,\n    etapa_cultivo: ctxBase.etapa_cultivo\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 160,
+        "y": 560,
+        "wires": [
+            [
+                "aea1ef970d3250b6",
+                "31d1ee497fc37735"
+            ]
+        ]
+    },
+    {
+        "id": "31d1ee497fc37735",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug contexto parcela",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 430,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "483b4c6ec9b6cc9f",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 7,
+        "width": "12",
+        "height": "1",
+        "name": "Predicción IA",
+        "label": "Predicción Nueral Network:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 1070,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "0866c3493ef2709a",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Preparar contexto Agente LLM",
+        "func": "let prediccion = msg.payload;\nlet d = msg.sensores || {};\nlet ctx = msg.contexto || {};\nlet ahora = new Date();\n\nmsg.payload = {\n    parcela: d.parcela || \"Parcela no especificada\",\n    datetime: ahora.toLocaleString(\"es-AR\"),\n    temp: d.temp ?? \"sin dato\",\n    hum_amb: d.hum ?? \"sin dato\",\n    hum_suelo: d.suelo ?? \"sin dato\",\n    radiacion: d.rad ?? \"sin dato\",\n    viento: ctx.viento ?? \"sin dato\",\n    bateria_dron: ctx.bateria_dron ?? ctx.bateria ?? \"sin dato\",\n    nivel_tanque: ctx.nivel_tanque ?? \"sin dato\",\n    ultimo_riego_horas: ctx.ultimo_riego_horas ?? \"sin dato\",\n    ultima_fumigacion_dias: ctx.ultima_fumigacion_dias ?? \"sin dato\",\n    tipo_cultivo: ctx.tipo_cultivo ?? \"sin dato\",\n    etapa_cultivo: ctx.etapa_cultivo ?? \"sin dato\",\n    prediccion_nn: prediccion\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 790,
+        "y": 620,
+        "wires": [
+            [
+                "71b47693f5da35fc",
+                "793fdcd818d2dd06"
+            ]
+        ]
+    },
+    {
+        "id": "71b47693f5da35fc",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug payload agente",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "03defb7a379b37ac",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Reporte normal local",
+        "func": "let s = msg.sensores || {};\nlet ctx = msg.contexto || {};\nlet pred = \"\";\n\nif (typeof msg.payload === \"string\") {\n    pred = msg.payload;\n} else if (msg.payload && msg.payload.prediccion_nn) {\n    pred = msg.payload.prediccion_nn;\n}\n\nmsg.payload = `ESTADO: MONITOREAR\nDIAGNÓSTICO: ${s.parcela || \"La parcela\"} se mantiene estable: temperatura ${s.temp} °C, suelo ${s.suelo}% y viento ${ctx.viento} km/h.\nMISIÓN: No iniciar vuelo del dron. Continuar monitoreo automático.`;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1480,
+        "y": 740,
+        "wires": [
+            [
+                "1b1e78ef2f3ee09e",
+                "bd2f53094b86b7ac"
+            ]
+        ]
+    },
+    {
+        "id": "65b9f960bdd36c38",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Limpiar respuesta LLM",
+        "func": "let texto = String(msg.payload || \"\").toUpperCase();\n\nlet comando = \"MONITOREAR\";\n\nif (texto.includes(\"ALERTA\") && (texto.includes(\"CR\\u00CDTICA\") || texto.includes(\"CRITICA\"))) {\n    comando = \"ALERTA CR\\u00CDTICA\";\n} else if (texto.includes(\"POSTERGAR\")) {\n    comando = \"POSTERGAR\";\n} else if (texto.includes(\"INSPECCIONAR\")) {\n    comando = \"INSPECCIONAR\";\n} else if (texto.includes(\"FUMIGAR\")) {\n    comando = \"FUMIGAR\";\n} else if (texto.includes(\"REGAR\")) {\n    comando = \"REGAR\";\n} else if (texto.includes(\"NORMAL\") || texto.includes(\"MONITOREAR\")) {\n    comando = \"MONITOREAR\";\n}\n\nmsg.topic = \"cursoiot/grupo3/comandos\";\nmsg.payload = comando;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1660,
+        "y": 600,
+        "wires": [
+            [
+                "1b1e78ef2f3ee09e",
+                "bd2f53094b86b7ac",
+                "97f23fcfd099bf31"
+            ]
+        ]
+    },
+    {
+        "id": "95f016e73c9247c8",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Error Agente LLM",
+        "func": "msg.payload = \"ERROR: El agente LLM no respondió. Revisar API key, cuota o modelo. Se conserva la predicción de la red neuronal como respaldo.\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 680,
+        "wires": [
+            [
+                "1b1e78ef2f3ee09e",
+                "bd2f53094b86b7ac"
+            ]
+        ]
+    },
+    {
+        "id": "1b1e78ef2f3ee09e",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 8,
+        "width": "12",
+        "height": "4",
+        "name": "Reporte Agente LLM",
+        "label": "Reporte Agente LLM:",
+        "format": "{{msg.payload}}",
+        "layout": "col-center",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "",
+        "color": "#000000",
+        "x": 1880,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "bd2f53094b86b7ac",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "debug reporte agente",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1900,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "97f23fcfd099bf31",
+        "type": "switch",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Comando según Agente",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ALERTA CRÍTICA",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "REGAR",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "FUMIGAR",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "POSTERGAR",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "INSPECCIONAR",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "MONITOREAR",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 6,
+        "x": 1830,
+        "y": 440,
+        "wires": [
+            [
+                "3a7779d78c316557"
+            ],
+            [
+                "3a7779d78c316557"
+            ],
+            [
+                "3a7779d78c316557"
+            ],
+            [
+                "3a7779d78c316557"
+            ],
+            [
+                "3a7779d78c316557"
+            ],
+            [
+                "3a7779d78c316557"
+            ]
+        ]
+    },
+    {
+        "id": "0c69df1e95de04e3",
+        "type": "change",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Comando ALERTA",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "cursoiot/Agus2/comando",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "ALERTA",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2070,
+        "y": 360,
+        "wires": [
+            [
+                "3a7779d78c316557"
+            ]
+        ]
+    },
+    {
+        "id": "b9dd855ed065da8c",
+        "type": "change",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Comando ACCION",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "cursoiot/Agus2/comando",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "ACCION RECOMENDADA",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2070,
+        "y": 440,
+        "wires": [
+            [
+                "3a7779d78c316557"
+            ]
+        ]
+    },
+    {
+        "id": "ad33422dfaf8f960",
+        "type": "change",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Comando OK",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "cursoiot/Agus2/comando",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "SISTEMA OK",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2060,
+        "y": 520,
+        "wires": [
+            [
+                "3a7779d78c316557"
+            ]
+        ]
+    },
+    {
+        "id": "1f462fd88ea50d69",
+        "type": "debug",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Debug LLM",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1570,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "a965a650d04d3360",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Preparar Valores Nuevos IA",
+        "func": "// Valores de prueba en escala real\nlet raw = {\n    parcela: \"Parcela 3\",\n    temp: 41,\n    hum: 3.2,\n    suelo: 62.4,\n    rad: 22.7\n};\n\n// Contexto operativo simulado para esa parcela\nlet ctx = {\n    viento: 48.2,\n    bateria_dron: 24.6,\n    nivel_tanque: 30,\n    ultimo_riego_horas: 2,\n    ultima_fumigacion_dias: 1,\n    tipo_cultivo: \"soja\",\n    etapa_cultivo: \"floración\"\n};\n\n// Guardamos datos crudos para el LLM\nmsg.sensores = raw;\nmsg.contexto = ctx;\n\n// Entrada normalizada para la neuralnet\nmsg.runData = {\n    temp: raw.temp / 50,\n    hum_amb: raw.hum / 100,\n    hum_suelo: raw.suelo / 100,\n    radiacion: raw.rad / 100,\n    viento: ctx.viento / 120\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 500,
+        "wires": [
+            [
+                "f1a323f9774314e8"
+            ]
+        ]
+    },
+    {
+        "id": "793fdcd818d2dd06",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Decidir si activar Agente LLM",
+        "func": "let pred = \"\";\n\nif (typeof msg.payload === \"string\") {\n    pred = msg.payload;\n} else if (msg.payload && msg.payload.prediccion_nn) {\n    pred = msg.payload.prediccion_nn;\n}\n\npred = pred.toUpperCase();\n\nlet s = msg.sensores || {};\nlet ctx = msg.contexto || {};\n\nlet activar = false;\n\n// Activa por predicción de la red neuronal\nif (\n    pred.includes(\"REGAR\") ||\n    pred.includes(\"FUMIGAR\") ||\n    pred.includes(\"INSPECCIONAR\") ||\n    pred.includes(\"ALERTA\")\n) {\n    activar = true;\n}\n\n// Activa también por sensores/contexto críticos aunque la red diga NORMAL\nif (\n    Number(s.temp) > 58 ||\n    Number(s.suelo) < 40 ||\n    Number(s.rad) > 85 ||\n    Number(ctx.viento) > 35 ||\n    Number(ctx.bateria_dron) < 30\n) {\n    activar = true;\n}\n\n// Activa si la confianza de la red es baja\nlet match = pred.match(/\\(([\\d.]+)%\\)/);\nif (match) {\n    let confianza = Number(match[1]);\n    if (confianza < 50) {\n        activar = true;\n    }\n}\n\nif (activar) {\n    return [msg, null];   // salida 1: Gemini\n} else {\n    return [null, msg];   // salida 2: reporte normal local\n}",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 660,
+        "wires": [
+            [
+                "dl_gemini_001"
+            ],
+            [
+                "03defb7a379b37ac"
+            ]
+        ]
+    },
+    {
+        "id": "d5e64487d3cd7b58",
+        "type": "gemini-generate-content",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Agente LLM - Planificador de misión",
+        "apiKey": "dbb6d934885561b5",
+        "modelSelection": "gemini-3-flash-preview",
+        "customModel": "",
+        "customModelType": "str",
+        "mode": "single",
+        "prompt": "ROL: Eres un supervisor agronómico senior y planificador de misión para un dron agrícola.  CONTEXTO: Supervisas un cultivo mediante sensores IoT y una predicción previa de una red neuronal. Tu tarea NO es repetir automáticamente la predicción de la red, sino tomar una decisión operativa final considerando sensores, contexto de la parcela y restricciones del dron.  DATOS ACTUALES: Parcela: {{msg.payload.parcela}} Fecha/hora: {{msg.payload.datetime}} Cultivo: {{msg.payload.tipo_cultivo}} Etapa del cultivo: {{msg.payload.etapa_cultivo}} Temperatura: {{msg.payload.temp}} °C Humedad ambiente: {{msg.payload.hum_amb}} % Humedad del suelo: {{msg.payload.hum_suelo}} % Radiación solar: {{msg.payload.radiacion}}/100 Viento: {{msg.payload.viento}} km/h Batería del dron: {{msg.payload.bateria_dron}} % Nivel del tanque: {{msg.payload.nivel_tanque}} % Último riego: hace {{msg.payload.ultimo_riego_horas}} horas Última fumigación: hace {{msg.payload.ultima_fumigacion_dias}} días Predicción de la red neuronal: {{msg.payload.prediccion_nn}}  REGLAS DE DECISIÓN: - La predicción de la red neuronal es solo una recomendación preliminar. No debe copiarse automáticamente si los sensores y el contexto indican otra decisión. - Elegir MONITOREAR si la humedad del suelo es mayor o igual a 40%, la temperatura es menor a 32 °C, la radiación es menor a 75, el viento es menor a 30 km/h y no hay otra condición relevante. - Elegir REGAR si la humedad del suelo es menor a 30% y no se cumplen condiciones de alerta crítica. - Elegir ALERTA CRÍTICA solo si se cumplen al mismo tiempo: humedad del suelo menor a 20%, temperatura mayor a 38 °C y radiación mayor a 75. - Si el suelo está seco pero hubo riego hace menos de 3 horas, elegir INSPECCIONAR antes de repetir riego. - Si la humedad ambiente es mayor a 75% y la temperatura es mayor a 24 °C, puede haber riesgo de hongos o plagas. Elegir FUMIGAR solo si el viento es menor a 25 km/h, el tanque es mayor a 25% y no hubo fumigación reciente. - Si la batería del dron es menor a 30%, no iniciar vuelo: elegir POSTERGAR, salvo que exista una ALERTA CRÍTICA del cultivo. - Si el viento es mayor a 35 km/h, no habilitar fumigación ni vuelo operativo: elegir POSTERGAR si la acción requiere dron. - Si la red neuronal indica INSPECCIONAR, usala como señal de posible anomalía, pero verificá si las condiciones operativas permiten enviar el dron. - Si no hay condición relevante, elegir MONITOREAR.  TAREA: Elegí UNA SOLA acción final entre: MONITOREAR, REGAR, FUMIGAR, INSPECCIONAR, POSTERGAR o ALERTA CRÍTICA.  Respondé siempre en español. No muestres razonamiento paso a paso. No expliques las reglas internamente. No uses markdown. No uses viñetas. No agregues títulos distintos a los indicados. Usá el símbolo % para porcentajes. No escribas \"por ciento\".  FORMATO OBLIGATORIO: Respondé exactamente 3 líneas.  ESTADO: <acción> DIAGNÓSTICO: <una sola oración breve> MISIÓN: <una sola oración breve>",
+        "promptType": "str",
+        "multimodalInputsData": "[]",
+        "grounding": false,
+        "temperature": "0.2",
+        "temperatureType": "num",
+        "topP": "",
+        "topPType": "num",
+        "topK": "",
+        "topKType": "num",
+        "maxOutputTokens": "1600",
+        "maxOutputTokensType": "num",
+        "safetyHarassment": "",
+        "safetyHateSpeech": "",
+        "safetySexuallyExplicit": "",
+        "safetyDangerousContent": "",
+        "thinkingBudget": "",
+        "thinkingBudgetType": "num",
+        "thinkingLevel": "",
+        "thinkingLevelType": "str",
+        "includeThoughts": false,
+        "systemInstruction": "",
+        "systemInstructionType": "str",
+        "outputProperty": "payload",
+        "passthroughProperties": false,
+        "responseFormat": "text",
+        "schemaPropertiesData": "[]",
+        "enumValues": "",
+        "x": 1310,
+        "y": 520,
+        "wires": [
+            [
+                "65b9f960bdd36c38",
+                "1f462fd88ea50d69"
+            ],
+            [
+                "95f016e73c9247c8"
+            ]
+        ]
+    },
+    {
+        "id": "sw_token_val_001",
+        "type": "switch",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Validar Token Seguro",
+        "property": "payload.token_seguro",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "AGRO",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 300,
+        "y": 120,
+        "wires": [
+            [
+                "fn_token_ok_001",
+                "9152d66f69d19552",
+                "014a8ba98845485e",
+                "2c28d6bcae29d0eb"
+            ],
+            [
+                "fn_token_blk_001"
+            ]
+        ]
+    },
+    {
+        "id": "fn_token_ok_001",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Comunicación Segura",
+        "func": "msg.payload = \"COMUNICACIÓN SEGURA ✓\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 60,
+        "wires": [
+            [
+                "ui_seguridad_001"
+            ]
+        ]
+    },
+    {
+        "id": "fn_token_blk_001",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Token Bloqueado",
+        "func": "let token = (msg.payload && msg.payload.token_seguro !== undefined) ? msg.payload.token_seguro : \"ausente\";\nmsg.payload = \"ACCESO BLOQUEADO ✗ - Token inválido: \" + token;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 290,
+        "y": 180,
+        "wires": [
+            [
+                "ui_seguridad_001"
+            ]
+        ]
+    },
+    {
+        "id": "ui_seguridad_001",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 9,
+        "width": "12",
+        "height": 0,
+        "name": "Estado Seguridad",
+        "label": "Seguridad:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "16",
+        "color": "#000000",
+        "x": 710,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "ui_viento_001",
+        "type": "ui_gauge",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Viento",
+        "group": "ui_group_sensors",
+        "order": 10,
+        "width": "6",
+        "height": "5",
+        "gtype": "gage",
+        "title": "Viento",
+        "label": "km/h",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "120",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "35",
+        "seg2": "80",
+        "diff": false,
+        "className": "",
+        "x": 670,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "ui_cultivo_001",
+        "type": "ui_text",
+        "z": "5ca8cb27f5ecfc74",
+        "group": "ui_group_sensors",
+        "order": 11,
+        "width": "6",
+        "height": 0,
+        "name": "Cultivo",
+        "label": "Cultivo:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": "16",
+        "color": "#000000",
+        "x": 670,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "dl_gemini_001",
+        "type": "delay",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Rate Limit Gemini (1/30s)",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "30",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": true,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1030,
+        "y": 520,
+        "wires": [
+            [
+                "d5e64487d3cd7b58"
+            ]
+        ]
+    },
+    {
+        "id": "d69d0f144c7f1ac6",
+        "type": "inject",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Iniciar entrenamiento",
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "date"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 3,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 380,
+        "wires": [
+            [
+                "584d0495c35f7ef8"
+            ]
+        ]
+    },
+    {
+        "id": "584d0495c35f7ef8",
+        "type": "file in",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Leer dataset",
+        "filename": "/data/dataset_agro_nodered_sin_bateria.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 360,
+        "y": 380,
+        "wires": [
+            [
+                "ac522e44b3f6bffc"
+            ]
+        ]
+    },
+    {
+        "id": "ac522e44b3f6bffc",
+        "type": "function",
+        "z": "5ca8cb27f5ecfc74",
+        "name": "Parsear dataset",
+        "func": "try {\n    msg.trainData = JSON.parse(msg.payload.toString());\n    msg.neuralNetworkOptions = {\n        learningRate: 0.3,\n        errorThresh: 0.005,\n        iterations: 3000,\n        hiddenLayers: [10, 6]\n    };\n    node.status({fill:\"green\",shape:\"dot\",text:msg.trainData.length+\" samples OK\"});\n    return msg;\n} catch(e) {\n    node.error(\"Dataset parse failed: \"+e.message, msg);\n    node.status({fill:\"red\",shape:\"ring\",text:\"parse error: \"+e.message});\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 380,
+        "wires": [
+            [
+                "f1a323f9774314e8"
+            ]
+        ]
     }
 ]
