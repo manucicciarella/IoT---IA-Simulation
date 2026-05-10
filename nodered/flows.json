@@ -1270,7 +1270,7 @@
                 "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "cursoiot/Agus2/comando",
+                "to": "cursoiot/grupo3/comando",
                 "tot": "str"
             },
             {
@@ -1304,7 +1304,7 @@
                 "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "cursoiot/Agus2/comando",
+                "to": "cursoiot/grupo3/comando",
                 "tot": "str"
             },
             {
@@ -1338,7 +1338,7 @@
                 "t": "set",
                 "p": "topic",
                 "pt": "msg",
-                "to": "cursoiot/Agus2/comando",
+                "to": "cursoiot/grupo3/comando",
                 "tot": "str"
             },
             {

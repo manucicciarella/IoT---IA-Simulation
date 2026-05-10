@@ -1,6 +1,9 @@
 # ── Node-RED (keep only the files needed to run Docker) ──────────────────────
 nodered/.config.*
 nodered/flows_cred.json
+nodered/*_cred.json
+nodered/*_cred.json.backup
+nodered/.flows_cred*
 nodered/node_modules/
 nodered/package.json
 nodered/package-lock.json
